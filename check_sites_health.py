@@ -27,7 +27,8 @@ def main():
 def load_urls4check(path: str):
     file_data = load_file_data(file_path=path)
     if file_data is None:
-        exit('File was not found')
+        print('File was not found')
+        return None
     url_regexp_row = 'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]| ! ' \
                      '*  \(\),] | (?: %[0-9a-fA-F][0-9a-fA-F]))+'
     urls = re.findall(url_regexp_row, file_data)
@@ -36,7 +37,6 @@ def load_urls4check(path: str):
               'Url format: http(s)://example.com')
         return None
     for url in urls:
-
         yield url
 
 
