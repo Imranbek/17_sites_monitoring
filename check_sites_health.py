@@ -23,8 +23,9 @@ def main():
     for url in urls4check:
         loop_usage_marker = True
         domain_name = get_domain_name_from_url(url=url)
+        main_page_url = get_main_page_url(url=url)
 
-        domain_response_ok = is_server_respond_with_ok(url=url)
+        domain_response_ok = is_server_respond_with_ok(url=main_page_url)
         domain_expiration_date = get_domain_expiration_date(domain_name)
 
         if not domain_response_ok:
@@ -75,6 +76,23 @@ def get_domain_name_from_url(url: str):
     domain_name = parsed_uri.netloc
 
     return domain_name
+
+
+def get_domain_scheme_from_url(url: str):
+    parsed_uri = urlparse(url=url)
+    domain_name = parsed_uri.scheme
+
+    return domain_name
+
+
+def get_main_page_url(url: str):
+    domain_name = get_domain_name_from_url(url=url)
+    domain_scheme = get_domain_scheme_from_url(url=url)
+
+    main_page_url = '{}://{}'.format(domain_scheme,
+                                     domain_name)
+
+    return main_page_url
 
 
 def get_domain_expiration_date(domain_name: str):
