@@ -13,34 +13,58 @@ def main():
     date_to_check = datetime.today() - relativedelta(months=1)
     file_path = get_file_path_from_arguments()
 
-    urls4check = load_urls4check(path=file_path)
-
-    for url in urls4check:
-        assert is_server_respond_with_200(url=url), \
-            'Server response is not 200.'
-        domain_name = get_domain_name_from_url(url=url)
-        assert get_domain_expiration_date(domain_name) > date_to_check, \
-            'Domain expiration date is less than a month.'
-        print('Health of domain {} is Ok!'.format(domain_name))
-
-
-def load_urls4check(path: str):
-    file_data = load_file_data(file_path=path)
+    file_data = load_file_data(file_path=file_path)
     if file_data is None:
         print('File was not found')
         return None
-    url_regexp_row = 'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]| ! ' \
-                     '*  \(\),] | (?: %[0-9a-fA-F][0-9a-fA-F]))+'
-    urls = re.findall(url_regexp_row, file_data)
-    if not urls:
+
+    urls4check = load_urls4check(file_data=file_data)
+    loop_usage_marker = False
+    for url in urls4check:
+        loop_usage_marker = True
+        domain_name = get_domain_name_from_url(url=url)
+
+        domain_response_ok = is_server_respond_with_ok(url=url)
+        domain_expiration_date = get_domain_expiration_date(domain_name)
+
+        if not domain_response_ok:
+            print_response_not_ok_error(domain_name=domain_name)
+
+        elif domain_expiration_date <= date_to_check:
+            print_expiration_date_error(domain_name)
+
+        elif domain_response_ok and (domain_expiration_date > date_to_check):
+            print_domain_health_ok_message(domain_name)
+
+        print('-----------------')
+
+    if not loop_usage_marker:
         print('There is no urls in file.'
               'Url format: http(s)://example.com')
-        return None
+
+
+def print_response_not_ok_error(domain_name: str):
+    print('Server response for domain {} is not Ok.'.format(domain_name))
+
+
+def print_expiration_date_error(domain_name: str):
+    print('Domain expiration date for domain {} '
+          'is less than a month.'.format(domain_name))
+
+
+def print_domain_health_ok_message(domain_name: str):
+    print('Health of domain {} is Ok!'.format(domain_name))
+
+
+def load_urls4check(file_data: str):
+    url_regexp_row = r'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]| ! ' \
+                     '*  \(\),] | (?: %[0-9a-fA-F][0-9a-fA-F]))+'
+    urls = re.findall(url_regexp_row, file_data)
     for url in urls:
         yield url
 
 
-def is_server_respond_with_200(url: str):
+def is_server_respond_with_ok(url: str):
     response = requests.get(url=url)
 
     return response.ok
@@ -54,8 +78,11 @@ def get_domain_name_from_url(url: str):
 
 
 def get_domain_expiration_date(domain_name: str):
-    domain = whois.query(domain_name)
-    domain_expiration_date = domain.expiration_date
+    domain = whois.whois(domain_name)
+    try:
+        domain_expiration_date = domain.expiration_date[0]
+    except TypeError:
+        domain_expiration_date = domain.expiration_date
 
     return domain_expiration_date
 
