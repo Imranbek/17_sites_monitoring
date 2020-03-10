@@ -12,6 +12,9 @@ from dateutil.relativedelta import relativedelta
 def main():
     date_to_check = datetime.today() - relativedelta(months=1)
     file_path = get_file_path_from_arguments()
+    assert file_path, 'No file path in arguments. ' \
+                      'Please rerun script with file path. ' \
+                      'You can find instruction in README file.'
 
     file_data = load_file_data(file_path=file_path)
     if file_data is None:
@@ -31,10 +34,14 @@ def main():
         if not domain_response_ok:
             print_response_not_ok_error(domain_name=domain_name)
 
-        elif domain_expiration_date <= date_to_check:
-            print_expiration_date_error(domain_name)
+        elif not domain_expiration_date:
+            print_no_expiration_date_error(domain_name)
 
-        elif domain_response_ok and (domain_expiration_date > date_to_check):
+        elif domain_expiration_date and (domain_expiration_date <= date_to_check):
+            print_expiration_date_less_error(domain_name)
+
+        elif domain_expiration_date and domain_response_ok and \
+                (domain_expiration_date > date_to_check):
             print_domain_health_ok_message(domain_name)
 
         print('-----------------')
@@ -48,7 +55,11 @@ def print_response_not_ok_error(domain_name: str):
     print('Server response for domain {} is not Ok.'.format(domain_name))
 
 
-def print_expiration_date_error(domain_name: str):
+def print_no_expiration_date_error(domain_name: str):
+    print('Domain {} have no expiration date.'.format(domain_name))
+
+
+def print_expiration_date_less_error(domain_name: str):
     print('Domain expiration date for domain {} '
           'is less than a month.'.format(domain_name))
 
@@ -58,17 +69,23 @@ def print_domain_health_ok_message(domain_name: str):
 
 
 def load_urls4check(file_data: str):
-    url_regexp_row = r'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]| ! ' \
-                     '*  \(\),] | (?: %[0-9a-fA-F][0-9a-fA-F]))+'
-    urls = re.findall(url_regexp_row, file_data)
-    for url in urls:
-        yield url
+    url_regex_row = r'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]| ! ' \
+                    '*  \(\),] | (?: %[0-9a-fA-F][0-9a-fA-F]))+'
+    urls = re.findall(url_regex_row, file_data)
+    '''Оставил так, потому что разделитель может быть вообще любой, 
+    а не только перенос строки. Реализация через разбиение на строки
+    потребует повышения требований к пользователю с форматом файла на 
+    ввод и дополнительным проверкам в коде - а это усложенени и немного лень)))
+    '''
+    return urls
 
 
 def is_server_respond_with_ok(url: str):
-    response = requests.get(url=url)
-
-    return response.ok
+    try:
+        response = requests.get(url=url)
+        return response.ok
+    except requests.exceptions.ConnectionError:
+        return None
 
 
 def get_domain_name_from_url(url: str):
